@@ -1,20 +1,20 @@
 # ENS Asset Sender
 
-A simple backend service that allows sending ETH and tokens to Ethereum Name Service (ENS) names or regular Ethereum addresses.
+A simple backend service that allows sending ETH and tokens to Ethereum Name Service (ENS) names, Base names, or regular Ethereum addresses.
 
 ## Features
 
 - Resolve ENS names to Ethereum addresses
-- Resolve Base names to Ethereum addresses (when configured)
-- Send ETH to addresses or ENS names
-- Send ERC-20 tokens to addresses or ENS names
+- Resolve Base names to Ethereum addresses (on Base mainnet and Base Sepolia)
+- Send ETH to addresses or domain names
+- Send ERC-20 tokens to addresses or domain names
 
 ## Prerequisites
 
 - Node.js (v16 or higher recommended)
 - npm or yarn
 - An Ethereum wallet with some test ETH (for Sepolia testnet)
-- RPC URL (e.g., from Alchemy, Infura, or other providers)
+- RPC URLs for Ethereum and Base networks
 
 ## Setup Instructions
 
@@ -34,15 +34,17 @@ A simple backend service that allows sending ETH and tokens to Ethereum Name Ser
    - Add the following environment variables:
      ```
      RPC_URL=your_ethereum_rpc_url
-     PRIVATE_KEY=your_private_key
+     PRIVATE_KEY=your_ethereum_private_key
      PORT=3000
+     BASE_RPC_URL=https://mainnet.base.org
+     BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
      ```
    - Replace `your_ethereum_rpc_url` with your Ethereum RPC URL (e.g., Alchemy/Infura)
-   - Replace `your_private_key` with your Ethereum wallet private key (without the 0x prefix)
+   - Replace `your_ethereum_private_key` with your Ethereum wallet private key (without the 0x prefix)
    
    > ⚠️ **WARNING**: Never share your private key or commit the .env file to version control!
 
-4. If you want to use Base name resolution, update the `BASE_NS_CONTRACT` in `server.js` with the correct contract address.
+4. The application includes Base Name Registry contracts for both mainnet and Sepolia testnet.
 
 ## Running the Application
 
@@ -69,7 +71,7 @@ The server will start on port 3000 (or the port specified in your .env file).
 ### Resolve Base Name
 - **POST /resolve-base**
   - Resolves a Base name to an Ethereum address
-  - Body: `{ "baseName": "example.base" }`
+  - Body: `{ "baseName": "example.base" }` or `{ "baseName": "example" }` (`.base` will be appended if missing)
   - Response: `{ "address": "0x..." }`
 
 ### Send Asset
@@ -101,6 +103,24 @@ The server will start on port 3000 (or the port specified in your .env file).
     }
     ```
 
+## Name Resolution Support
+
+This service supports three types of name resolution:
+
+1. **ENS Names** (ending in `.eth`): Resolved using the standard ENS resolvers on Ethereum
+2. **Base Names** (ending in `.base` or without TLD): Resolved using the Base Name Registry
+3. **Base ENS Names** (ending in `.base.eth`): These are ENS subdomains and are resolved through the ENS
+
+## Base Name Resolution
+
+The service tries to resolve Base names using two different methods:
+1. First on Base mainnet
+2. Then on Base Sepolia testnet as fallback
+
+For each network, it tries two different resolution methods:
+1. The `ownerOf` method which treats Base names as NFTs
+2. The `resolve` method which is a more standard naming resolution approach
+
 ## Testing the API
 
 You can test the API using curl, Postman, or any API client:
@@ -113,7 +133,15 @@ curl -X POST http://localhost:3000/resolve-ens \
   -d '{"ensName": "vitalik.eth"}'
 ```
 
-### Test Sending ETH
+### Test Resolving a Base Name
+
+```bash
+curl -X POST http://localhost:3000/resolve-base \
+  -H "Content-Type: application/json" \
+  -d '{"baseName": "fredgitonga.base"}'
+```
+
+### Test Sending ETH to an ENS name
 
 ```bash
 curl -X POST http://localhost:3000/send-asset \
@@ -121,7 +149,15 @@ curl -X POST http://localhost:3000/send-asset \
   -d '{"recipient": "vitalik.eth", "amount": "0.001", "isEth": true}'
 ```
 
-> **Note**: For testing, use small amounts on a testnet like Sepolia.
+### Test Sending ETH to a Base name
+
+```bash
+curl -X POST http://localhost:3000/send-asset \
+  -H "Content-Type: application/json" \
+  -d '{"recipient": "fredgitonga.base", "amount": "0.001", "isEth": true}'
+```
+
+> **Note**: For testing, use small amounts on a testnet like Sepolia or Base Sepolia.
 
 ## License
 
