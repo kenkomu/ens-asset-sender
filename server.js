@@ -3,18 +3,20 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const { ethers } = require('ethers');
+const { ResolveBaseName } = require('./trial');
+
 
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
 // Updated for ethers.js v6
-const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
+const provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL);
 const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
 // Set up Base providers
-const baseProvider = new ethers.JsonRpcProvider(process.env.BASE_RPC_URL || 'https://mainnet.base.org');
-const baseSepoliaProvider = new ethers.JsonRpcProvider(process.env.BASE_SEPOLIA_RPC_URL || 'https://sepolia.base.org');
+const baseProvider = new ethers.providers.JsonRpcProvider(process.env.BASE_RPC_URL || 'https://mainnet.base.org');
+const baseSepoliaProvider = new ethers.providers.JsonRpcProvider(process.env.BASE_SEPOLIA_RPC_URL || 'https://sepolia.base.org');
 
 // Basic health check
 app.get('/', (req, res) => {
@@ -87,7 +89,7 @@ app.post('/resolve-base', async (req, res) => {
 
     // First check if it's a .base.eth name (which is resolved through ENS)
     if (baseName.endsWith('.base.eth')) {
-      const address = await provider.resolveName(baseName);
+      const address = await ResolveBaseName(baseName);
       
       if (!address) {
         return res.status(404).json({ error: 'Base.eth name not found' });
@@ -97,86 +99,86 @@ app.post('/resolve-base', async (req, res) => {
     }
     
     // Try to resolve on Base mainnet first
-    try {
-      const normalizedName = normalizeBaseName(baseName);
-      console.log(`Attempting to resolve ${normalizedName} on Base Mainnet`);
+    // try {
+    //   const normalizedName = normalizeBaseName(baseName);
+    //   console.log(`Attempting to resolve ${normalizedName} on Base Mainnet`);
       
-      const baseContract = new ethers.Contract(BASE_NAME_REGISTRY, BASE_NAME_ABI, baseProvider);
+    //   const baseContract = new ethers.Contract(BASE_NAME_REGISTRY, BASE_NAME_ABI, baseProvider);
       
-      // Try the ownerOf method if available (depends on implementation)
-      try {
-        const tokenId = nameToTokenId(normalizedName);
-        console.log(`Trying ownerOf with token ID: ${tokenId}`);
-        const owner = await baseContract.ownerOf(tokenId);
-        console.log(`Found owner: ${owner}`);
-        return res.json({ address: owner });
-      } catch (e) {
-        console.log('ownerOf method failed:', e.message);
-      }
+    //   // // Try the ownerOf method if available (depends on implementation)
+    //   // try {
+    //   //   const tokenId = nameToTokenId(normalizedName);
+    //   //   console.log(`Trying ownerOf with token ID: ${tokenId}`);
+    //   //   const owner = await baseContract.ownerOf(tokenId);
+    //   //   console.log(`Found owner: ${owner}`);
+    //   //   return res.json({ address: owner });
+    //   // } catch (e) {
+    //   //   console.log('ownerOf method failed:', e.message);
+    //   // }
       
-      // Try the resolve method
-      try {
-        console.log('Trying resolve method');
-        const nameBytes = ethers.toUtf8Bytes(normalizedName);
-        const addrSelector = '0x01';  // Selector for address resolution
-        const result = await baseContract.resolve(nameBytes, addrSelector);
+    //   // // Try the resolve method
+    //   // try {
+    //   //   console.log('Trying resolve method');
+    //   //   const nameBytes = ethers.toUtf8Bytes(normalizedName);
+    //   //   const addrSelector = '0x01';  // Selector for address resolution
+    //   //   const result = await baseContract.resolve(nameBytes, addrSelector);
         
-        if (result && result.length >= 20) {
-          const address = ethers.getAddress('0x' + Buffer.from(result).slice(-20).toString('hex'));
-          console.log(`Found address via resolve: ${address}`);
-          return res.json({ address });
-        }
-      } catch (e) {
-        console.log('resolve method failed:', e.message);
-      }
+    //   //   if (result && result.length >= 20) {
+    //   //     const address = ethers.getAddress('0x' + Buffer.from(result).slice(-20).toString('hex'));
+    //   //     console.log(`Found address via resolve: ${address}`);
+    //   //     return res.json({ address });
+    //   //   }
+    //   // } catch (e) {
+    //   //   console.log('resolve method failed:', e.message);
+    //   // }
       
-      throw new Error('Could not resolve on Base Mainnet');
-    } catch (mainnetError) {
-      console.log('Base Mainnet resolution failed, trying Sepolia:', mainnetError.message);
+    //   throw new Error('Could not resolve on Base Mainnet');
+    // } catch (mainnetError) {
+    //   console.log('Base Mainnet resolution failed, trying Sepolia:', mainnetError.message);
       
       // Try Base Sepolia as fallback
-      try {
-        const normalizedName = normalizeBaseName(baseName);
-        console.log(`Attempting to resolve ${normalizedName} on Base Sepolia`);
+      // try {
+      //   const normalizedName = normalizeBaseName(baseName);
+      //   console.log(`Attempting to resolve ${normalizedName} on Base Sepolia`);
         
-        const sepoliaContract = new ethers.Contract(
-          BASE_NAME_REGISTRY_SEPOLIA, 
-          BASE_NAME_ABI, 
-          baseSepoliaProvider
-        );
+      //   const sepoliaContract = new ethers.Contract(
+      //     BASE_NAME_REGISTRY_SEPOLIA, 
+      //     BASE_NAME_ABI, 
+      //     baseSepoliaProvider
+      //   );
         
-        // Try the ownerOf method first
-        try {
-          const tokenId = nameToTokenId(normalizedName);
-          console.log(`Trying ownerOf with token ID: ${tokenId}`);
-          const owner = await sepoliaContract.ownerOf(tokenId);
-          console.log(`Found owner on Sepolia: ${owner}`);
-          return res.json({ address: owner });
-        } catch (e) {
-          console.log('Sepolia ownerOf method failed:', e.message);
-        }
+      //   // Try the ownerOf method first
+      //   try {
+      //     const tokenId = nameToTokenId(normalizedName);
+      //     console.log(`Trying ownerOf with token ID: ${tokenId}`);
+      //     const owner = await sepoliaContract.ownerOf(tokenId);
+      //     console.log(`Found owner on Sepolia: ${owner}`);
+      //     return res.json({ address: owner });
+      //   } catch (e) {
+      //     console.log('Sepolia ownerOf method failed:', e.message);
+      //   }
         
-        // Try the resolve method
-        try {
-          console.log('Trying resolve method on Sepolia');
-          const nameBytes = ethers.toUtf8Bytes(normalizedName);
-          const addrSelector = '0x01';  // Selector for address resolution
-          const result = await sepoliaContract.resolve(nameBytes, addrSelector);
+      //   // // Try the resolve method
+      //   // try {
+      //   //   console.log('Trying resolve method on Sepolia');
+      //   //   const nameBytes = ethers.toUtf8Bytes(normalizedName);
+      //   //   const addrSelector = '0x01';  // Selector for address resolution
+      //   //   const result = await sepoliaContract.resolve(nameBytes, addrSelector);
           
-          if (result && result.length >= 20) {
-            const address = ethers.getAddress('0x' + Buffer.from(result).slice(-20).toString('hex'));
-            console.log(`Found address via resolve on Sepolia: ${address}`);
-            return res.json({ address });
-          }
-        } catch (e) {
-          console.log('Sepolia resolve method failed:', e.message);
-        }
-      } catch (sepoliaError) {
-        console.error('Base Sepolia resolution also failed:', sepoliaError.message);
-      }
-    }
+      //   //   if (result && result.length >= 20) {
+      //   //     const address = ethers.getAddress('0x' + Buffer.from(result).slice(-20).toString('hex'));
+      //   //     console.log(`Found address via resolve on Sepolia: ${address}`);
+      //   //     return res.json({ address });
+      //   //   }
+      //   // } catch (e) {
+      //   //   console.log('Sepolia resolve method failed:', e.message);
+      //   // }
+      // } catch (sepoliaError) {
+      //   console.error('Base Sepolia resolution also failed:', sepoliaError.message);
+      // }
+    // }
     
-    return res.status(404).json({ error: 'Base name not found or resolution method unsupported' });
+    // return res.status(404).json({ error: 'Base name not found or resolution method unsupported' });
   } catch (error) {
     console.error('Base name resolution error:', error);
     res.status(500).json({ error: 'Failed to resolve Base name' });
