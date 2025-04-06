@@ -4,6 +4,8 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const { ethers } = require('ethers');
 const { ResolveBaseName } = require('./trial');
+const {SendToBaseName} = require('./trial');
+
 
 
 const app = express();
@@ -36,19 +38,19 @@ const BASE_NAME_ABI = [
 // Helper function to normalize Base name
 function normalizeBaseName(name) {
   if (!name.includes('.')) {
-    return name + '.base';
+    return name + '.base.eth';
   }
   return name;
 }
 
 // Helper function to convert name to token ID for Base names
-function nameToTokenId(name) {
-  const normalized = normalizeBaseName(name);
-  // Remove .base suffix for hash calculation
-  const baseName = normalized.endsWith('.base') ? normalized.slice(0, -5) : normalized;
-  // Simple hash function (actual implementation might be different)
-  return ethers.keccak256(ethers.toUtf8Bytes(baseName));
-}
+// function nameToTokenId(name) {
+//   const normalized = normalizeBaseName(name);
+//   // Remove .base suffix for hash calculation
+//   const baseName = normalized.endsWith('.base') ? normalized.slice(0, -5) : normalized;
+//   // Simple hash function (actual implementation might be different)
+//   return ethers.keccak256(ethers.toUtf8Bytes(baseName));
+// }
 
 /**
  * @route POST /resolve-ens
@@ -200,7 +202,8 @@ app.post('/send-asset', async (req, res) => {
       let recipientAddress = recipient;
       
       // Check if the input is already an Ethereum address
-      if (!ethers.isAddress(recipient)) {
+      if (!ethers.utils.isAddress(recipient)) {
+        
         // Try ENS resolution for .eth names
         if (recipient.endsWith('.eth')) {
           recipientAddress = await provider.resolveName(recipient);
@@ -239,18 +242,25 @@ app.post('/send-asset', async (req, res) => {
         }
       }
   
-      if (!ethers.isAddress(recipientAddress)) {
+      if (!ethers.utils.isAddress(recipientAddress)) {
         return res.status(400).json({ error: 'Invalid recipient address or unresolvable name' });
       }
   
       let tx;
       
       if (isEth) {
-        // Send ETH
+        // Send ETH through Base
+        if (recipient.includes('.base')){
+          console.log(`Sending ETH to Base name: ${recipient} : ${recipientAddress}`);
+          tx = await SendToBaseName(process.env.PRIVATE_KEY.toString(),recipientAddress,amount)
+        } else {
+          // Send ETH through Eth wallet
         tx = await wallet.sendTransaction({
           to: recipientAddress,
-          value: ethers.parseEther(amount.toString())
+          value: ethers.utils.parseEther(amount.toString())
         });
+        }
+       
       } else {
         // Send ERC20 token
         if (!tokenAddress) {
@@ -271,7 +281,8 @@ app.post('/send-asset', async (req, res) => {
       res.json({ 
         success: true,
         txHash: tx.hash,
-        recipient: recipientAddress
+        recipient: recipientAddress,
+        amount: amount
       });
     } catch (error) {
       console.error('Transfer error:', error);
