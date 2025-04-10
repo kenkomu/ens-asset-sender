@@ -4,6 +4,7 @@ require('dotenv').config();
 // Configuration
 const providerMainnet = new ethers.providers.JsonRpcProvider("https://mainnet.base.org");
 const BASE_ENS_RESOLVER_ADDRESS = "0xC6d566A56A1aFf6508b41f6c90ff131615583BCD";
+const CUSTOM_BASE_ENS_RESOLVER_ADDRESS = "00x2161f1a296f73702d69efaa44e466fb2c1c3ab04"; // Base Mainnet SC address
 const providerBaseSepolia = new ethers.providers.JsonRpcProvider("https://sepolia.base.org");
 
 // const provider = new ethers.providers.JsonRpcProvider("https://sepolia.base.org");
