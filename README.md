@@ -5,8 +5,8 @@ A simple backend service that allows sending ETH and tokens to Ethereum Name Ser
 ## Features
 
 - Resolve ENS names to Ethereum addresses
-- Resolve Base names to Ethereum addresses (on Base mainnet and Base Sepolia)
-- Send ETH to addresses or domain names
+- Resolve Base names to Ethereum addresses (on Base mainnet )
+- Send ETH to addresses or domain names (on Base mainnet and testnet)
 - Send ERC-20 tokens to addresses or domain names
 
 ## Prerequisites
@@ -35,7 +35,7 @@ A simple backend service that allows sending ETH and tokens to Ethereum Name Ser
      ```
      RPC_URL=your_ethereum_rpc_url
      PRIVATE_KEY=your_ethereum_private_key
-     PORT=3000
+     PORT=10000
      BASE_RPC_URL=https://mainnet.base.org
      BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
      ```
